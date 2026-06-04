@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instynct — Musical Fluency Trainer</title>
+  <script src="https://cdn.jsdelivr.net/npm/tone@14/build/Tone.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #09090f;
+      --card:     #12121f;
+      --card2:    #1a1a2e;
+      --border:   #252540;
+      --accent:   #6c5ce7;
+      --accent2:  #00cec9;
+      --warm:     #fd79a8;
+      --gold:     #fdcb6e;
+      --text:     #dfe6e9;
+      --dim:      #636e72;
+      --radius:   10px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 48px;
+      gap: 16px;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      padding: 8px 0 4px;
+    }
+    header h1 {
+      font-size: 1.9rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header p {
+      color: var(--dim);
+      font-size: 0.82rem;
+      letter-spacing: 0.06em;
+      margin-top: 4px;
+    }
+
+    /* ── Settings ── */
+    .settings {
+      width: 100%;
+      max-width: 780px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 10px 14px;
+    }
+
+    .sg { display: flex; flex-direction: column; gap: 5px; }
+
+    .sg label {
+      font-size: 0.68rem;
+      color: var(--dim);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 600;
+    }
+
+    .sg select, .sg input[type="number"] {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 9px;
+      border-radius: 6px;
+      font-size: 0.87rem;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .sg select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23636e72'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; padding-right: 24px; }
+    .sg select:focus, .sg input:focus { border-color: var(--accent); }
+
+    /* ── Main card ── */
+    .main-card {
+      width: 100%;
+      max-width: 780px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    /* ── Contour ── */
+    .contour-wrap {
+      width: 100%;
+      height: 90px;
+      position: relative;
+    }
+    .contour-wrap svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    /* ── Phrase display ── */
+    .phrase-wrap {
+      position: relative;
+      min-height: 74px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .notes-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .notes-row.blurred .note-chip { filter: blur(7px); pointer-events: none; user-select: none; }
+
+    .note-chip {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 7px 11px 5px;
+      text-align: center;
+      min-width: 44px;
+      transition: filter 0.25s;
+    }
+    .note-chip .nn {
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      line-height: 1;
+    }
+    .note-chip .nd {
+      font-size: 0.65rem;
+      color: var(--dim);
+      margin-top: 3px;
+      letter-spacing: 0.04em;
+    }
+    .note-chip.w1 { min-width: 44px; }
+    .note-chip.w2 { min-width: 58px; }
+    .note-chip.w3 { min-width: 70px; }
+
+    .reveal-cover {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .reveal-cover button {
+      background: rgba(108,92,231,0.15);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      padding: 9px 20px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      transition: background 0.15s;
+    }
+    .reveal-cover button:hover { background: rgba(108,92,231,0.28); }
+
+    .empty-hint {
+      color: var(--dim);
+      font-size: 0.88rem;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 13px 28px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: background 0.15s, transform 0.1s;
+    }
+    button.primary:hover:not(:disabled) { background: #7d6ff0; }
+    button.primary:active:not(:disabled) { transform: scale(0.97); }
+    button.primary:disabled { opacity: 0.45; cursor: not-allowed; }
+    button.primary.playing { background: #2d3436; border: 1px solid var(--accent2); color: var(--accent2); }
+
+    button.sec {
+      background: var(--card2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 18px;
+      font-size: 0.87rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    button.sec:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    button.sec:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    button.reveal-btn {
+      background: transparent;
+      color: var(--accent2);
+      border: 1px solid var(--accent2);
+      border-radius: 8px;
+      padding: 11px 18px;
+      font-size: 0.87rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button.reveal-btn:hover:not(:disabled) { background: rgba(0,206,201,0.1); }
+    button.reveal-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ── Info bar ── */
+    .info-bar {
+      width: 100%;
+      max-width: 780px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 2px;
+    }
+    .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tag {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 0.72rem;
+      color: var(--dim);
+      letter-spacing: 0.04em;
+    }
+    .play-dot {
+      font-size: 0.75rem;
+      color: var(--accent2);
+      letter-spacing: 0.06em;
+    }
+
+    /* ── Tip ── */
+    .tip {
+      max-width: 780px;
+      width: 100%;
+      text-align: center;
+      color: var(--dim);
+      font-size: 0.78rem;
+      letter-spacing: 0.03em;
+      line-height: 1.6;
+    }
+
+    /* ── Flow mode ── */
+    button.flow-btn {
+      background: transparent;
+      color: var(--gold);
+      border: 1px solid var(--gold);
+      border-radius: 8px;
+      padding: 11px 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: background 0.15s;
+    }
+    button.flow-btn:hover { background: rgba(253,203,110,0.1); }
+    button.flow-btn.active {
+      background: rgba(253,203,110,0.15);
+      color: var(--gold);
+    }
+
+    .flow-panel {
+      width: 100%;
+      max-width: 780px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .flow-panel.active { display: flex; }
+
+    .flow-top {
+      display: flex;
+      width: 100%;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .flow-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .flow-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
+    .flow-dot.listen  { background: var(--accent); animation: fpulse 1s ease-in-out infinite; }
+    .flow-dot.respond { background: var(--accent2); animation: fpulse 0.7s ease-in-out infinite; }
+
+    @keyframes fpulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: 0.5; transform: scale(0.75); }
+    }
+
+    .flow-label {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      color: var(--accent);
+      transition: color 0.3s;
+    }
+    .flow-label.respond { color: var(--accent2); }
+
+    .flow-meta {
+      font-size: 0.75rem;
+      color: var(--dim);
+      letter-spacing: 0.06em;
+    }
+
+    .flow-bar-wrap {
+      width: 100%;
+      height: 5px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .flow-bar {
+      height: 100%;
+      width: 0%;
+      border-radius: 3px;
+      background: var(--accent);
+      transition: background 0.3s;
+    }
+    .flow-bar.respond { background: var(--accent2); }
+
+    .flow-hint {
+      font-size: 0.8rem;
+      color: var(--dim);
+      letter-spacing: 0.04em;
+      text-align: center;
+    }
+
+    button.metro-btn {
+      background: transparent;
+      color: var(--dim);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 18px;
+      font-size: 0.87rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    button.metro-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+    button.metro-btn.active {
+      background: rgba(0,206,201,0.12);
+      border-color: var(--accent2);
+      color: var(--accent2);
+    }
+
+    button.drum-btn {
+      background: transparent;
+      color: var(--dim);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 18px;
+      font-size: 0.87rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    button.drum-btn:hover { border-color: #e17055; color: #e17055; }
+    button.drum-btn.active {
+      background: rgba(225,112,85,0.12);
+      border-color: #e17055;
+      color: #e17055;
+    }
+
+    button.drone-btn {
+      background: transparent;
+      color: var(--dim);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 18px;
+      font-size: 0.87rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    button.drone-btn:hover { border-color: #e6a04a; color: #e6a04a; }
+    button.drone-btn.active {
+      background: rgba(230,160,74,0.13);
+      border-color: #e6a04a;
+      color: #e6a04a;
+    }
+
+    /* ── Bars / playhead toggle ── */
+    .phrase-header {
+      width: 100%;
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 4px;
+    }
+    .bars-toggle {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--dim);
+      border-radius: 5px;
+      padding: 4px 10px;
+      font-size: 0.72rem;
+      font-weight: 500;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+      transition: all 0.15s;
+    }
+    .bars-toggle:hover { border-color: var(--accent); color: var(--accent); }
+    .bars-toggle.active { background: rgba(108,92,231,0.1); border-color: var(--accent); color: var(--accent); }
+
+    .bar-line {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      padding: 0 6px;
+      align-self: stretch;
+    }
+    .notes-row.show-bars .bar-line { display: flex; }
+    .bar-num { font-size: 0.6rem; color: var(--dim); opacity: 0.6; letter-spacing: 0.04em; }
+    .bar-rule { flex: 1; width: 1px; min-height: 28px; background: var(--border); }
+
+    .note-chip.playing {
+      border-top-color: var(--accent2) !important;
+      background: rgba(0,206,201,0.13);
+      box-shadow: 0 2px 10px rgba(0,206,201,0.22);
+      transform: translateY(-2px);
+      transition: background 0.06s, transform 0.06s, box-shadow 0.06s;
+    }
+
+    @media (max-width: 560px) {
+      .settings { grid-template-columns: repeat(3, 1fr); }
+      button.primary { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>INSTYNCT</h1>
+  <p>hear it &nbsp;·&nbsp; feel it &nbsp;·&nbsp; play it</p>
+</header>
+
+<div class="settings">
+  <div class="sg">
+    <label>Key</label>
+    <select id="selKey">
+      <option>C</option><option>C#</option><option>D</option>
+      <option>Eb</option><option>E</option><option>F</option>
+      <option>F#</option><option>G</option><option>Ab</option>
+      <option>A</option><option>Bb</option><option>B</option>
+    </select>
+  </div>
+  <div class="sg">
+    <label>Scale</label>
+    <select id="selScale">
+      <option>Major</option>
+      <option>Natural Minor</option>
+      <option>Dorian</option>
+      <option>Mixolydian</option>
+      <option>Phrygian</option>
+      <option>Penta Major</option>
+      <option selected>Penta Minor</option>
+      <option>Blues</option>
+      <option>Harmonic Minor</option>
+      <option>Whole Tone</option>
+    </select>
+  </div>
+  <div class="sg">
+    <label>Tempo</label>
+    <input type="number" id="inTempo" value="96" min="40" max="240" step="4">
+  </div>
+  <div class="sg">
+    <label>Beats</label>
+    <select id="selBeats">
+      <option value="4">4 beats</option>
+      <option value="8" selected>8 beats</option>
+      <option value="12">12 beats</option>
+      <option value="16">16 beats</option>
+    </select>
+  </div>
+  <div class="sg">
+    <label>Feel</label>
+    <select id="selFeel">
+      <option value="straight" selected>Straight</option>
+      <option value="swing">Swing</option>
+      <option value="sparse">Sparse</option>
+      <option value="busy">Busy</option>
+    </select>
+  </div>
+  <div class="sg">
+    <label>Beat</label>
+    <select id="selBeat">
+      <option value="Rock" selected>Rock</option>
+      <option value="Funk">Funk</option>
+      <option value="Jazz">Jazz</option>
+      <option value="Bossa">Bossa Nova</option>
+      <option value="Half-time">Half-time</option>
+    </select>
+  </div>
+  <div class="sg">
+    <label>Sound</label>
+    <select id="selSound">
+      <option value="flute" selected>Flute</option>
+      <option value="pure">Pure Tone</option>
+      <option value="reed">Reed</option>
+      <option value="bell">Bell</option>
+    </select>
+  </div>
+</div>
+
+<div class="main-card">
+
+  <div class="contour-wrap">
+    <svg id="contourSvg" viewBox="0 0 760 90" preserveAspectRatio="none">
+      <text x="380" y="50" text-anchor="middle" fill="#333" font-size="13" font-family="system-ui">
+        contour will appear here
+      </text>
+    </svg>
+  </div>
+
+  <div class="phrase-header">
+    <button class="bars-toggle" id="btnBars" onclick="toggleBars()">◫ Bars &amp; Beat</button>
+  </div>
+
+  <div class="phrase-wrap">
+    <div class="notes-row blurred" id="notesRow">
+      <span class="empty-hint" id="emptyHint">Press Generate &amp; Play to hear a phrase</span>
+    </div>
+    <div class="reveal-cover" id="revealCover" style="display:none">
+      <button onclick="toggleReveal()">Reveal notes</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="primary" id="btnGen" onclick="handleGenerate()">▶ Generate &amp; Play</button>
+    <button class="sec" id="btnReplay" onclick="handleReplay()" disabled>↺ Replay</button>
+    <button class="sec" id="btnSlow"   onclick="handleSlow()"   disabled>⟳ 60% Speed</button>
+    <button class="reveal-btn" id="btnReveal" onclick="toggleReveal()" disabled>◉ Reveal Notes</button>
+    <button class="drone-btn" id="btnDrone" onclick="toggleDrone()">≈ Drone</button>
+    <button class="metro-btn" id="btnMetro" onclick="toggleMetronome()">♩ Metronome</button>
+    <button class="drum-btn"  id="btnDrum"  onclick="toggleDrumBeat()">⬡ Drum Beat</button>
+    <button class="flow-btn" id="btnFlow" onclick="toggleFlow()">⟳ Flow Mode</button>
+  </div>
+
+</div>
+
+<div class="flow-panel" id="flowPanel">
+  <div class="flow-top">
+    <div class="flow-badge">
+      <div class="flow-dot listen" id="flowDot"></div>
+      <div class="flow-label" id="flowLabel">LISTEN</div>
+    </div>
+    <div class="flow-meta" id="flowMeta">phrase 1</div>
+  </div>
+  <div class="flow-bar-wrap">
+    <div class="flow-bar" id="flowBar"></div>
+  </div>
+  <div class="flow-hint" id="flowHint">Listen carefully — memorise the phrase</div>
+</div>
+
+<div class="info-bar">
+  <div class="tags" id="tagRow"></div>
+  <div class="play-dot" id="playDot"></div>
+</div>
+
+<p class="tip">
+  Listen to the phrase, then try to reproduce it on your instrument by ear.<br>
+  Replay as many times as needed before revealing the notes.
+</p>
+
+<script>
+'use strict';
+
+// ── Music constants ───────────────────────────────────────────────────────
+
+const SCALES = {
+  'Major':          [0,2,4,5,7,9,11],
+  'Natural Minor':  [0,2,3,5,7,8,10],
+  'Dorian':         [0,2,3,5,7,9,10],
+  'Mixolydian':     [0,2,4,5,7,9,10],
+  'Phrygian':       [0,1,3,5,7,8,10],
+  'Penta Major':    [0,2,4,7,9],
+  'Penta Minor':    [0,3,5,7,10],
+  'Blues':          [0,3,5,6,7,10],
+  'Harmonic Minor': [0,2,3,5,7,8,11],
+  'Whole Tone':     [0,2,4,6,8,10],
+};
+
+const CHROMATIC = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+const SHARP_PC  = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const FLAT_PC   = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+const FLAT_KEYS = new Set(['F','Bb','Eb','Ab','Db','Gb']);
+
+function midiToName(midi, key) {
+  const pc = ((midi % 12) + 12) % 12;
+  const oct = Math.floor(midi / 12) - 1;
+  return (FLAT_KEYS.has(key) ? FLAT_PC : SHARP_PC)[pc] + oct;
+}
+
+function keyRootMidi(key, oct = 4) {
+  return (oct + 1) * 12 + CHROMATIC.indexOf(key);
+}
+
+function buildScaleNotes(key, intervals, lo, hi) {
+  const rpc = CHROMATIC.indexOf(key);
+  const out = [];
+  for (let m = lo; m <= hi; m++) {
+    if (intervals.includes(((m - rpc) % 12 + 12) % 12)) out.push(m);
+  }
+  return out;
+}
+
+// ── Rhythm generation ─────────────────────────────────────────────────────
+// Phrases are assembled from 2-beat cells so every note always lands on a
+// musically valid subdivision — no random drift onto awkward off-beats.
+
+const RHYTHM_CELLS = {
+  straight: [
+    [1, 1],
+    [2],
+    [1.5, 0.5],
+    [0.5, 1.5],
+    [0.5, 0.5, 1],
+    [1, 0.5, 0.5],
+    [0.5, 0.5, 0.5, 0.5],
+  ],
+  swing: [
+    [1, 1],
+    [1, 0.5, 0.5],
+    [0.5, 0.5, 1],
+    [0.5, 0.5, 0.5, 0.5],
+    [1.5, 0.5],
+    [0.5, 1, 0.5],
+  ],
+  sparse: [
+    [2],
+    [2],
+    [1, 1],
+    [1.5, 0.5],
+    [2],
+  ],
+  busy: [
+    [0.5, 0.5, 0.5, 0.5],
+    [0.5, 0.5, 1],
+    [1, 0.5, 0.5],
+    [0.5, 0.5, 0.5, 0.5],
+    [0.5, 1, 0.5],
+  ],
+};
+
+function makeRhythm(totalBeats, feel) {
+  // totalBeats is always 4 / 8 / 12 / 16 — always even, always fills neatly
+  const cells = RHYTHM_CELLS[feel] || RHYTHM_CELLS.straight;
+  const result = [];
+  for (let i = 0; i < totalBeats / 2; i++) {
+    result.push(...cells[Math.floor(Math.random() * cells.length)]);
+  }
+  return result;
+}
+
+// ── Contour generation ────────────────────────────────────────────────────
+
+const SHAPES = ['arch','valley','ascending','descending','wave','plateau','step-up','step-down'];
+
+function makeContour(shape, n) {
+  const pts = Array.from({length: n}, (_, i) => {
+    const t = n > 1 ? i / (n - 1) : 0.5;
+    switch (shape) {
+      case 'arch':       return Math.sin(t * Math.PI);
+      case 'valley':     return 1 - Math.sin(t * Math.PI);
+      case 'ascending':  return t * 0.9;
+      case 'descending': return 1 - t * 0.9;
+      case 'wave':       return (Math.sin(t * Math.PI * 3 - Math.PI / 2) + 1) / 2;
+      case 'plateau':    return t < 0.2 ? t / 0.2 * 0.85 : t > 0.8 ? 0.85 * (1 - (t - 0.8) / 0.2) : 0.85;
+      case 'step-up':    return t < 0.5 ? 0.2 : 0.75;
+      case 'step-down':  return t < 0.5 ? 0.75 : 0.2;
+      default:           return 0.5;
+    }
+  });
+
+  // Humanise interior points
+  return pts.map((p, i) => {
+    if (i === 0 || i === n - 1) return p;
+    return Math.max(0, Math.min(1, p + (Math.random() - 0.5) * 0.18));
+  });
+}
+
+// ── Phrase generation ─────────────────────────────────────────────────────
+
+function makePhrase({ key, scale, tempo, phraseBeats, feel }) {
+  const intervals = SCALES[scale];
+  if (!intervals) return null;
+
+  const root  = keyRootMidi(key, 4);
+  const notes = buildScaleNotes(key, intervals, root - 10, root + 22);
+  if (!notes.length) return null;
+
+  const durations = makeRhythm(phraseBeats, feel);
+  const n         = durations.length;
+  const shape     = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+  const contour   = makeContour(shape, n);
+
+  // ── Chord tone set ────────────────────────────────────────────────────────
+  const rpc   = CHROMATIC.indexOf(key);
+  const ctPcs = new Set([0, 7]);                   // root + perfect 5th
+  if (intervals.includes(3)) ctPcs.add(3);         // minor 3rd
+  if (intervals.includes(4)) ctPcs.add(4);         // major 3rd
+  const isChordTone = midi => ctPcs.has(((midi - rpc) % 12 + 12) % 12);
+
+  // ── Beat position of each note ────────────────────────────────────────────
+  let acc = 0;
+  const beatPos = durations.map(d => { const p = acc; acc += d; return p; });
+
+  // ── Root anchor in scale pool ─────────────────────────────────────────────
+  let rootIdx = notes.findIndex(m => m === root);
+  if (rootIdx < 0) rootIdx = Math.floor(notes.length * 0.35);
+  const span = Math.min(notes.length - 1, Math.floor(intervals.length * 1.3));
+
+  // ── Build melody note-by-note with candidate scoring ──────────────────────
+  const melody = [];
+
+  for (let i = 0; i < n; i++) {
+    const h  = contour[i];
+    const bp = beatPos[i];
+    const onStrong   = bp % 2 === 0;   // beat 1 and 3 of every bar
+    const onDownbeat = bp % 4 === 0;   // bar-start beat 1 (strongest)
+
+    const targetIdx = Math.min(
+      Math.max(Math.round(rootIdx + (h - 0.5) * span), 0),
+      notes.length - 1
+    );
+
+    // Candidates: ±2 scale steps around the contour target
+    const lo   = Math.max(0, targetIdx - 2);
+    const hi   = Math.min(notes.length - 1, targetIdx + 2);
+    const prev = melody.length ? melody[melody.length - 1] : root;
+
+    const scored = [];
+    for (let j = lo; j <= hi; j++) {
+      const midi = notes[j];
+      const step = Math.abs(midi - prev);
+      const ct   = isChordTone(midi);
+      let   s    = 0;
+
+      // Voice leading
+      if      (step === 0) s += 1;   // unison — allowed
+      else if (step <= 2)  s += 4;   // step — strongly preferred
+      else if (step <= 4)  s += 2;   // 3rd — good
+      else if (step <= 7)  s += 0;   // up to a 5th — neutral
+      else                 s -= 3;   // leap — discouraged
+
+      // Chord tone quality
+      if (ct) s += 3;
+
+      // Strong beats: non-chord tones are penalised
+      if (onStrong   && !ct) s -= 4;
+      if (onDownbeat && !ct) s -= 3; // stacks on beat 1 for extra weight
+
+      // Contour fidelity: small cost for drifting from the target register
+      s -= Math.abs(j - targetIdx) * 0.5;
+
+      scored.push({ midi, s });
+    }
+
+    // Weighted random selection — squaring weights sharpens the preference
+    // without making it deterministic, so phrases stay varied
+    const floor   = Math.min(...scored.map(c => c.s));
+    const weights = scored.map(c => Math.max(0.05, c.s - floor + 1) ** 2);
+    const total   = weights.reduce((a, b) => a + b, 0);
+    let   r       = Math.random() * total;
+    let   chosen  = scored[0].midi;
+    for (let k = 0; k < scored.length; k++) {
+      r -= weights[k];
+      if (r <= 0) { chosen = scored[k].midi; break; }
+    }
+    melody.push(chosen);
+  }
+
+  const velocities = contour.map(h => 0.42 + h * 0.42);
+  return {
+    melody:    fixEnding(smoothLeaps(melody, notes), key, notes, intervals),
+    durations, velocities, tempo, key, scale, shape, feel,
+  };
+}
+
+function smoothLeaps(melody, notes) {
+  const m = [...melody];
+  for (let i = 1; i < m.length; i++) {
+    const jump = m[i] - m[i - 1];
+    if (Math.abs(jump) > 10) {
+      const alt = m[i] + (jump > 0 ? -12 : 12);
+      if (notes.includes(alt)) m[i] = alt;
+    }
+  }
+  return m;
+}
+
+function fixEnding(melody, key, notes, intervals) {
+  if (!melody.length) return melody;
+  const rpc = CHROMATIC.indexOf(key);
+  // Stable scale degrees (semitones above root): root, 5th, 3rd (major or minor)
+  const stable = new Set([0, 7]);
+  if (intervals.includes(3)) stable.add(3);
+  if (intervals.includes(4)) stable.add(4);
+
+  const last = melody[melody.length - 1];
+  const lpc = ((last - rpc) % 12 + 12) % 12;
+  if (!stable.has(lpc)) {
+    const candidates = notes.filter(n => stable.has(((n - rpc) % 12 + 12) % 12));
+    if (candidates.length) {
+      melody[melody.length - 1] = candidates.reduce((b, n) =>
+        Math.abs(n - last) < Math.abs(b - last) ? n : b
+      );
+    }
+  }
+  return melody;
+}
+
+// ── Audio ─────────────────────────────────────────────────────────────────
+// All sources connect to masterBus. The bus reduces the summed signal by ~8 dB
+// before it reaches the hard limiter, so no source combination can overdrive it.
+const masterLimiter = new Tone.Limiter(-2).toDestination();
+const masterBus     = new Tone.Gain(0.4).connect(masterLimiter);
+
+let synth = null;
+let reverb = null;
+let endTimer = null;
+let activeSoundType = null;
+
+function initSynth(sound) {
+  if (synth) try { synth.dispose(); } catch(e) {}
+  if (reverb) try { reverb.dispose(); } catch(e) {}
+
+  reverb = new Tone.Reverb({ decay: 1.8, wet: 0.22 }).connect(masterBus);
+
+  const opts = {
+    flute: () => new Tone.Synth({
+      oscillator: { type: 'triangle8' },
+      envelope: { attack: 0.07, decay: 0.08, sustain: 0.82, release: 0.7 }
+    }),
+    pure: () => new Tone.Synth({
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.05, decay: 0.05, sustain: 0.9, release: 0.9 }
+    }),
+    reed: () => new Tone.AMSynth({
+      harmonicity: 0.5,
+      oscillator: { type: 'sawtooth' },
+      envelope: { attack: 0.06, decay: 0.12, sustain: 0.88, release: 0.45 },
+      modulation: { type: 'sine' },
+      modulationEnvelope: { attack: 0.15, decay: 0.1, sustain: 1, release: 0.5 }
+    }),
+    bell: () => new Tone.FMSynth({
+      harmonicity: 3.01,
+      modulationIndex: 14,
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.001, decay: 1.2, sustain: 0.05, release: 1.4 },
+      modulation: { type: 'sine' },
+      modulationEnvelope: { attack: 0.001, decay: 0.4, sustain: 0.1, release: 0.5 }
+    }),
+  };
+
+  synth = (opts[sound] || opts.flute)();
+  synth.connect(reverb);
+  activeSoundType = sound;
+}
+
+async function playPhrase(phrase, speed = 1.0, atTime = null) {
+  const sound = document.getElementById('selSound').value;
+  if (!synth || activeSoundType !== sound) initSynth(sound);
+
+  await Tone.start();
+  if (endTimer) clearTimeout(endTimer);
+
+  const bps = (phrase.tempo * speed) / 60;
+  const t0  = atTime ?? (Tone.now() + 0.05);
+  let   off = 0;
+
+  phrase.melody.forEach((midi, i) => {
+    const dur  = phrase.durations[i];
+    const name = midiToName(midi, phrase.key);
+    const vel  = phrase.velocities[i] ?? 0.65;
+    synth.triggerAttackRelease(name, (dur * 0.84) / bps, t0 + off / bps, vel);
+    off += dur;
+  });
+
+  schedulePlayhead(phrase, t0, speed);
+  startContourPlayhead(t0, off / bps);
+
+  const totalMs = (off / bps + 0.7) * 1000;
+  setPlayState(true);
+  endTimer = setTimeout(() => setPlayState(false), totalMs);
+}
+
+// ── Bars & playhead ───────────────────────────────────────────────────────
+
+let showBars       = false;
+let playheadTimers = [];
+
+function toggleBars() {
+  showBars = !showBars;
+  const btn = document.getElementById('btnBars');
+  btn.classList.toggle('active', showBars);
+  btn.textContent = showBars ? '◫ Bars & Beat: On' : '◫ Bars & Beat';
+  document.getElementById('notesRow').classList.toggle('show-bars', showBars);
+}
+
+function schedulePlayhead(phrase, audioStartTime, speed = 1.0) {
+  clearPlayhead();
+  if (!showBars) return;
+
+  const bps = (phrase.tempo * speed) / 60;
+  let off = 0;
+
+  phrase.durations.forEach((dur, i) => {
+    const ms = Math.max(0, (audioStartTime + off / bps - Tone.now()) * 1000);
+    playheadTimers.push(setTimeout(() => {
+      document.querySelectorAll('.note-chip.playing').forEach(c => c.classList.remove('playing'));
+      const chip = document.querySelector(`.note-chip[data-ni="${i}"]`);
+      if (chip) chip.classList.add('playing');
+    }, ms));
+    off += dur;
+  });
+
+  // Clear highlight after last note
+  const endMs = Math.max(0, (audioStartTime + off / bps - Tone.now() + 0.2) * 1000);
+  playheadTimers.push(setTimeout(clearPlayhead, endMs));
+}
+
+function clearPlayhead() {
+  playheadTimers.forEach(clearTimeout);
+  playheadTimers = [];
+  document.querySelectorAll('.note-chip.playing').forEach(c => c.classList.remove('playing'));
+}
+
+// ── UI state ──────────────────────────────────────────────────────────────
+
+let currentPhrase = null;
+let revealed = false;
+
+function getSettings() {
+  return {
+    key:         document.getElementById('selKey').value,
+    scale:       document.getElementById('selScale').value,
+    tempo:       Math.max(40, Math.min(240, parseInt(document.getElementById('inTempo').value) || 96)),
+    phraseBeats: parseInt(document.getElementById('selBeats').value) || 8,
+    feel:        document.getElementById('selFeel').value,
+  };
+}
+
+function handleGenerate() {
+  currentPhrase = makePhrase(getSettings());
+  if (!currentPhrase) return;
+
+  revealed = false;
+  renderNotes(currentPhrase);
+  renderContour(currentPhrase);
+  renderTags(currentPhrase);
+
+  document.getElementById('btnReplay').disabled  = false;
+  document.getElementById('btnSlow').disabled    = false;
+  document.getElementById('btnReveal').disabled  = false;
+  document.getElementById('btnReveal').textContent = '◉ Reveal Notes';
+  document.getElementById('notesRow').classList.add('blurred');
+  document.getElementById('revealCover').style.display = 'flex';
+
+  playPhrase(currentPhrase);
+}
+
+function handleReplay() { if (currentPhrase) playPhrase(currentPhrase); }
+function handleSlow()   { if (currentPhrase) playPhrase(currentPhrase, 0.6); }
+
+function toggleReveal() {
+  revealed = !revealed;
+  document.getElementById('notesRow').classList.toggle('blurred', !revealed);
+  document.getElementById('revealCover').style.display = revealed ? 'none' : 'flex';
+  document.getElementById('btnReveal').textContent = revealed ? '◎ Hide Notes' : '◉ Reveal Notes';
+}
+
+function setPlayState(on) {
+  const btn = document.getElementById('btnGen');
+  btn.textContent = on ? '⏸ Playing…' : '▶ Generate & Play';
+  btn.classList.toggle('playing', on);
+  document.getElementById('playDot').textContent = on ? '● playing' : '';
+}
+
+// ── Rendering ─────────────────────────────────────────────────────────────
+
+const DUR_LABEL = { 0.5: '8th', 1: 'quarter', 1.5: 'dot ♩', 2: 'half' };
+const DEGREE_COLORS = [
+  '#6c5ce7','#00cec9','#fd79a8','#fdcb6e',
+  '#55efc4','#74b9ff','#a29bfe','#ff7675',
+  '#ffeaa7','#dfe6e9','#b2bec3','#81ecec'
+];
+
+function degreeColor(midi, key, intervals) {
+  const rpc = CHROMATIC.indexOf(key);
+  const pc  = ((midi - rpc) % 12 + 12) % 12;
+  const deg = intervals.indexOf(pc);
+  return DEGREE_COLORS[deg >= 0 ? deg % DEGREE_COLORS.length : 0];
+}
+
+function renderNotes(phrase) {
+  const row  = document.getElementById('notesRow');
+  const hint = document.getElementById('emptyHint');
+  const ivs  = SCALES[phrase.scale];
+
+  hint.style.display = 'none';
+  row.querySelectorAll('.note-chip, .bar-line').forEach(c => c.remove());
+  if (showBars) row.classList.add('show-bars');
+
+  let beatAcc = 0;
+  phrase.melody.forEach((midi, i) => {
+    const beatP = beatAcc;
+    beatAcc += phrase.durations[i];
+
+    // Bar line before notes that start a new bar (every 4 beats, skip bar 1)
+    if (beatP > 0 && beatP % 4 === 0) {
+      const bl = document.createElement('div');
+      bl.className = 'bar-line';
+      bl.innerHTML = `<span class="bar-num">${beatP / 4 + 1}</span><div class="bar-rule"></div>`;
+      row.appendChild(bl);
+    }
+
+    const name = midiToName(midi, phrase.key);
+    const dur  = phrase.durations[i];
+    const col  = degreeColor(midi, phrase.key, ivs);
+    const w    = dur >= 1.5 ? 'w3' : dur === 1 ? 'w2' : 'w1';
+
+    const chip = document.createElement('div');
+    chip.className = `note-chip ${w}`;
+    chip.dataset.ni = i;
+    chip.style.borderTop = `2px solid ${col}`;
+    chip.innerHTML = `<div class="nn" style="color:${col}">${name}</div>`
+                   + `<div class="nd">${DUR_LABEL[dur] || dur}</div>`;
+    row.appendChild(chip);
+  });
+}
+
+function renderContour(phrase) {
+  const svg  = document.getElementById('contourSvg');
+  const W = 760, H = 90, PAD = 16;
+
+  const notes = phrase.melody;
+  if (!notes.length) return;
+
+  const lo = Math.min(...notes);
+  const hi = Math.max(...notes);
+  const rng = hi - lo || 1;
+
+  const total = phrase.durations.reduce((s, d) => s + d, 0);
+  let beat = 0;
+  const pts = notes.map((m, i) => {
+    const cx = PAD + ((beat + phrase.durations[i] / 2) / total) * (W - PAD * 2);
+    const cy = H - PAD - ((m - lo) / rng) * (H - PAD * 2);
+    beat += phrase.durations[i];
+    return [cx, cy];
+  });
+
+  const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+  const area = `M${pts[0][0].toFixed(1)},${H - PAD} `
+    + pts.map(p => `L${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')
+    + ` L${pts[pts.length-1][0].toFixed(1)},${H - PAD} Z`;
+
+  const dots = pts.map(p =>
+    `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="#6c5ce7" opacity="0.85"/>`
+  ).join('');
+
+  // Bar lines at every 4 beats (bar 1 starts implicitly at left edge)
+  let barMarkup = '';
+  for (let b = 4; b < total; b += 4) {
+    const bx = (PAD + (b / total) * (W - PAD * 2)).toFixed(1);
+    barMarkup += `<line x1="${bx}" y1="0" x2="${bx}" y2="${H}" stroke="#252540" stroke-width="1.2"/>
+                  <text x="${+bx + 3}" y="10" fill="#383858" font-size="9" font-family="system-ui"
+                        font-weight="600">${b / 4 + 1}</text>`;
+  }
+
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#6c5ce7" stop-opacity="0.35"/>
+        <stop offset="100%" stop-color="#6c5ce7" stop-opacity="0.02"/>
+      </linearGradient>
+    </defs>
+    ${barMarkup}
+    <path d="${area}" fill="url(#cg)"/>
+    <path d="${line}" fill="none" stroke="#6c5ce7" stroke-width="2.2"
+          stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots}
+    <line id="contourPlayhead" x1="${PAD}" y1="0" x2="${PAD}" y2="${H}"
+          stroke="#00cec9" stroke-width="1.5" stroke-linecap="round" opacity="0"/>
+  `;
+}
+
+// ── Contour playhead ──────────────────────────────────────────────────────
+
+let playheadRAF = null;
+
+function startContourPlayhead(audioStartTime, totalSec) {
+  if (playheadRAF) cancelAnimationFrame(playheadRAF);
+  const W = 760, PAD = 16;
+
+  function tick() {
+    const ph = document.getElementById('contourPlayhead');
+    if (!ph) return;
+    const progress = Math.min(1, (Tone.now() - audioStartTime) / totalSec);
+    const x = (PAD + progress * (W - PAD * 2)).toFixed(1);
+    ph.setAttribute('x1', x);
+    ph.setAttribute('x2', x);
+    ph.setAttribute('opacity', '0.9');
+    if (progress < 1) {
+      playheadRAF = requestAnimationFrame(tick);
+    } else {
+      playheadRAF = null;
+      setTimeout(() => {
+        const l = document.getElementById('contourPlayhead');
+        if (l) l.setAttribute('opacity', '0');
+      }, 400);
+    }
+  }
+
+  playheadRAF = requestAnimationFrame(tick);
+}
+
+function stopContourPlayhead() {
+  if (playheadRAF) { cancelAnimationFrame(playheadRAF); playheadRAF = null; }
+  const ph = document.getElementById('contourPlayhead');
+  if (ph) ph.setAttribute('opacity', '0');
+}
+
+function renderTags(phrase) {
+  const row = document.getElementById('tagRow');
+  const count = phrase.melody.length;
+  const beats = phrase.durations.reduce((s, d) => s + d, 0);
+  row.innerHTML = [
+    phrase.key + ' ' + phrase.scale,
+    phrase.shape,
+    phrase.feel,
+    `${count} notes`,
+    `${beats} beats · ${phrase.tempo} bpm`,
+  ].map(t => `<span class="tag">${t}</span>`).join('');
+}
+
+// ── Flow mode ─────────────────────────────────────────────────────────────
+
+// ── Drone ─────────────────────────────────────────────────────────────────
+
+let droneActive = false;
+let droneOscs   = [];
+let droneGain   = null;
+
+function toggleDrone() {
+  droneActive = !droneActive;
+  const btn = document.getElementById('btnDrone');
+  btn.classList.toggle('active', droneActive);
+  btn.textContent = droneActive ? '≈ Drone: On' : '≈ Drone';
+  if (droneActive) startDrone();
+  else stopDrone(false);
+}
+
+async function startDrone() {
+  await Tone.start();
+  stopDrone(true); // kill any previous drone immediately
+
+  const key   = document.getElementById('selKey').value;
+  const root2 = keyRootMidi(key, 2); // deep bass root
+  const root3 = keyRootMidi(key, 3); // mid root
+
+  droneGain = new Tone.Gain(0).connect(masterBus);
+
+  // Root × 2 octaves + quiet 5th; slight micro-detuning between layers for warmth
+  [
+    [root2,     0,  -14],   // fundamental (pulled back to avoid bass clipping)
+    [root3,     3,  -10],   // root octave up, +3 cents
+    [root3,    -4,  -12],   // root octave up, −4 cents (creates slow beating)
+    [root3 + 7, 1,  -20],   // very quiet perfect 5th for tonal context
+  ].forEach(([midi, detune, db]) => {
+    const osc = new Tone.Oscillator({
+      type:      'sine',
+      frequency: Tone.Frequency(midi, 'midi').toFrequency(),
+      detune,
+      volume:    db,
+    }).connect(droneGain);
+    osc.start();
+    droneOscs.push(osc);
+  });
+
+  // Fade in over ~0.7 s so the entrance is smooth
+  droneGain.gain.linearRampToValueAtTime(0.5, Tone.now() + 0.7);
+}
+
+function stopDrone(immediate = false) {
+  const oscs = droneOscs.splice(0);   // take and clear
+  const gain  = droneGain;
+  droneGain   = null;
+  if (!gain) return;
+
+  function dispose() {
+    oscs.forEach(o => { try { o.stop(); o.dispose(); } catch(e) {} });
+    try { gain.dispose(); } catch(e) {}
+  }
+
+  if (immediate) {
+    dispose();
+  } else {
+    // Fade out over 0.4 s before disposing
+    const now = Tone.now();
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(gain.gain.value, now);
+    gain.gain.linearRampToValueAtTime(0, now + 0.4);
+    setTimeout(dispose, 500);
+  }
+}
+
+// Re-tune drone instantly when the key selector changes
+document.getElementById('selKey').addEventListener('change', () => {
+  if (droneActive) startDrone();
+});
+
+// ── Metronome & Drum Beat ─────────────────────────────────────────────────
+
+const DRUM_PATTERNS = {
+  Rock: {
+    sub: '8n',
+    kick:  [1,0,0,0,1,0,0,0],
+    snare: [0,0,1,0,0,0,1,0],
+    hihat: [1,1,1,1,1,1,1,1],
+  },
+  Funk: {
+    sub: '16n',
+    kick:  [1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0],
+    snare: [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+    hihat: [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  },
+  Jazz: {
+    sub: '8t',
+    kick:  [1,0,0,0,0,0,0,0,0,0,0,0],
+    snare: [0,0,0,1,0,0,0,0,0,1,0,0],
+    ride:  [1,0,1,1,0,1,1,0,1,1,0,1],
+  },
+  Bossa: {
+    sub: '16n',
+    kick:  [1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+    snare: [0,0,1,0,0,1,0,0,0,0,1,0,0,1,0,0],
+    hihat: [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+  },
+  'Half-time': {
+    sub: '8n',
+    kick:  [1,0,0,0,0,0,0,0],
+    snare: [0,0,0,0,1,0,0,0],
+    hihat: [1,1,1,1,1,1,1,1],
+  },
+};
+
+let metroActive  = false;
+let drumActive   = false;
+let metroSynth   = null;
+let drumSynths   = null;
+let metroEventId = null;
+let drumSeqs     = [];
+
+function toggleMetronome() {
+  metroActive = !metroActive;
+  const btn = document.getElementById('btnMetro');
+  btn.classList.toggle('active', metroActive);
+  btn.textContent = metroActive ? '♩ Metro: On' : '♩ Metronome';
+  if (flowActive) restartTransport(getSettings().tempo);
+  else if (!metroActive && !drumActive) stopTransport();
+}
+
+function toggleDrumBeat() {
+  drumActive = !drumActive;
+  const btn = document.getElementById('btnDrum');
+  btn.classList.toggle('active', drumActive);
+  btn.textContent = drumActive ? '⬡ Drum: On' : '⬡ Drum Beat';
+  if (flowActive) restartTransport(getSettings().tempo);
+  else if (!metroActive && !drumActive) stopTransport();
+}
+
+function initMetroSynth() {
+  if (metroSynth) return;
+  metroSynth = new Tone.Synth({
+    oscillator: { type: 'triangle' },
+    envelope: { attack: 0.001, decay: 0.045, sustain: 0, release: 0.02 },
+    volume: 2,
+  }).connect(masterBus);
+}
+
+function initDrumSynths() {
+  if (drumSynths) return;
+
+  const kick = new Tone.MembraneSynth({
+    pitchDecay: 0.06, octaves: 7,
+    envelope: { attack: 0.001, decay: 0.35, sustain: 0, release: 0.08 },
+    volume: -3,
+  }).connect(masterBus);
+
+  // Pink noise: rolls off 3 dB/octave, much warmer than white
+  const snare = new Tone.NoiseSynth({
+    noise: { type: 'pink' },
+    envelope: { attack: 0.001, decay: 0.14, sustain: 0, release: 0.02 },
+    volume: -10,
+  }).connect(masterBus);
+
+  // Short white-noise burst — closed hi-hat. NoiseSynth is far cheaper than MetalSynth.
+  const hihat = new Tone.NoiseSynth({
+    noise: { type: 'white' },
+    envelope: { attack: 0.001, decay: 0.025, sustain: 0, release: 0.008 },
+    volume: -16,
+  }).connect(masterBus);
+
+  // Longer pink-noise decay — ride cymbal approximation, still cheap.
+  const ride = new Tone.NoiseSynth({
+    noise: { type: 'pink' },
+    envelope: { attack: 0.001, decay: 0.30, sustain: 0, release: 0.08 },
+    volume: -20,
+  }).connect(masterBus);
+
+  drumSynths = { kick, snare, hihat, ride };
+}
+
+function createDrumSeqs(patternName) {
+  const p = DRUM_PATTERNS[patternName];
+  if (!p || !drumSynths) return [];
+  const { kick, snare, hihat, ride } = drumSynths;
+  const seqs = [];
+
+  const add = (arr, fn) => {
+    if (!arr) return;
+    const s = new Tone.Sequence((t, v) => { if (v) fn(t); }, arr, p.sub);
+    s.loop = true; s.start(0); seqs.push(s);
+  };
+
+  add(p.kick,  t => kick.triggerAttackRelease('C1', '8n',  t, 0.7  + Math.random() * 0.1));
+  add(p.snare, t => snare.triggerAttackRelease('16n',      t, 0.55 + Math.random() * 0.1));
+  add(p.hihat, t => hihat.triggerAttackRelease('32n',      t, 0.3  + Math.random() * 0.15));
+  add(p.ride,  t => ride.triggerAttackRelease('8n',        t, 0.4  + Math.random() * 0.1));
+
+  return seqs;
+}
+
+function stopDrumSeqs() {
+  drumSeqs.forEach(s => { try { s.stop(); s.dispose(); } catch(e) {} });
+  drumSeqs = [];
+}
+
+function restartTransport(bpm) {
+  if (metroEventId !== null) { Tone.Transport.clear(metroEventId); metroEventId = null; }
+  stopDrumSeqs();
+  Tone.Transport.stop();
+  Tone.Transport.cancel();
+  Tone.Transport.position = 0;
+  Tone.Transport.bpm.value = bpm;
+
+  if (metroActive) {
+    initMetroSynth();
+    let tick = 0;
+    metroEventId = Tone.Transport.scheduleRepeat((time) => {
+      const accent = tick % 4 === 0;
+      metroSynth.triggerAttackRelease(accent ? 'C6' : 'G5', '32n', time, accent ? 0.85 : 0.5);
+      tick++;
+    }, '4n', 0);
+  }
+
+  if (drumActive) {
+    initDrumSynths();
+    drumSeqs = createDrumSeqs(document.getElementById('selBeat').value);
+  }
+
+  if (metroActive || drumActive) Tone.Transport.start('+0.1');
+}
+
+function stopTransport() {
+  if (metroEventId !== null) { Tone.Transport.clear(metroEventId); metroEventId = null; }
+  stopDrumSeqs();
+  Tone.Transport.stop();
+  Tone.Transport.cancel();
+  Tone.Transport.position = 0;
+}
+
+// ── Flow mode ─────────────────────────────────────────────────────────────
+
+let flowActive    = false;
+let flowTimer     = null;
+let flowProgTimer = null;
+let flowCount     = 0;
+
+function toggleFlow() {
+  flowActive ? stopFlow() : startFlow();
+}
+
+function startFlow() {
+  flowActive = true;
+  flowCount  = 0;
+
+  document.getElementById('flowPanel').classList.add('active');
+  document.getElementById('btnFlow').classList.add('active');
+  document.getElementById('btnFlow').textContent = '■ Stop Flow';
+
+  // Disable one-shot controls while flowing
+  document.getElementById('btnGen').disabled    = true;
+  document.getElementById('btnReplay').disabled = true;
+  document.getElementById('btnSlow').disabled   = true;
+
+  Tone.start().then(() => {
+    const t0 = Tone.now() + 0.1;
+    if (metroActive || drumActive) restartTransport(getSettings().tempo);
+    runFlowCycle(t0);
+  });
+}
+
+function stopFlow() {
+  flowActive = false;
+  if (flowTimer)     { clearTimeout(flowTimer);    flowTimer     = null; }
+  if (flowProgTimer) { clearInterval(flowProgTimer); flowProgTimer = null; }
+
+  stopTransport();
+  stopContourPlayhead();
+
+  document.getElementById('flowPanel').classList.remove('active');
+  document.getElementById('btnFlow').classList.remove('active');
+  document.getElementById('btnFlow').textContent = '⟳ Flow Mode';
+  document.getElementById('flowBar').style.width = '0%';
+
+  document.getElementById('btnGen').disabled = false;
+  if (currentPhrase) {
+    document.getElementById('btnReplay').disabled = false;
+    document.getElementById('btnSlow').disabled   = false;
+  }
+
+  setPlayState(false);
+}
+
+function runFlowCycle(phraseStartTime) {
+  if (!flowActive) return;
+
+  flowCount++;
+  const phrase = makePhrase(getSettings());
+  currentPhrase = phrase;
+
+  // Refresh main display (notes hidden until revealed)
+  revealed = false;
+  renderNotes(phrase);
+  renderContour(phrase);
+  renderTags(phrase);
+  document.getElementById('notesRow').classList.add('blurred');
+  document.getElementById('revealCover').style.display = 'flex';
+  document.getElementById('btnReveal').disabled = false;
+  document.getElementById('btnReveal').textContent = '◉ Reveal Notes';
+
+  // Sync metronome BPM if tempo changed mid-session
+  if ((metroActive || drumActive) && Tone.Transport.state === 'started') {
+    Tone.Transport.bpm.value = phrase.tempo;
+  }
+
+  // Exact phrase duration in seconds
+  const totalBeats = phrase.durations.reduce((s, d) => s + d, 0);
+  const durSec = totalBeats / (phrase.tempo / 60);
+
+  // Schedule phrase audio at the exact audio-clock time (no drift)
+  playPhrase(phrase, 1.0, phraseStartTime);
+  setFlowPhase('listen', durSec * 1000);
+
+  // Compute exact timestamps for the two transitions
+  const listenEnd  = phraseStartTime + durSec;
+  const respondEnd = listenEnd + durSec;   // silence = same length as phrase
+
+  // Fire each timeout based on remaining real time to the audio-clock event,
+  // so accumulated setTimeout slippage never shifts the musical grid.
+  flowTimer = setTimeout(() => {
+    if (!flowActive) return;
+    setFlowPhase('respond', durSec * 1000);
+
+    flowTimer = setTimeout(() => {
+      if (flowActive) runFlowCycle(respondEnd); // next phrase starts exactly here
+    }, Math.max(0, (respondEnd - Tone.now()) * 1000));
+
+  }, Math.max(0, (listenEnd - Tone.now()) * 1000));
+}
+
+function setFlowPhase(phase, durMs) {
+  const isListen = phase === 'listen';
+
+  const label = document.getElementById('flowLabel');
+  const dot   = document.getElementById('flowDot');
+  const bar   = document.getElementById('flowBar');
+  const hint  = document.getElementById('flowHint');
+  const meta  = document.getElementById('flowMeta');
+
+  label.textContent = isListen ? 'LISTEN' : 'YOUR TURN';
+  label.className   = 'flow-label' + (isListen ? '' : ' respond');
+  dot.className     = 'flow-dot ' + phase;
+  bar.className     = 'flow-bar'  + (isListen ? '' : ' respond');
+  meta.textContent  = `phrase ${flowCount}`;
+  hint.textContent  = isListen
+    ? 'Listen carefully — memorise the phrase'
+    : 'Repeat the phrase on your instrument';
+
+  // Animate progress bar from 0 → 100% over durMs
+  if (flowProgTimer) clearInterval(flowProgTimer);
+  bar.style.width = '0%';
+  const t0 = Date.now();
+  flowProgTimer = setInterval(() => {
+    const pct = Math.min(100, ((Date.now() - t0) / durMs) * 100);
+    bar.style.width = pct + '%';
+    if (pct >= 100) { clearInterval(flowProgTimer); flowProgTimer = null; }
+  }, 30);
+}
+
+// Guard: no Tone.js
+window.addEventListener('load', () => {
+  if (typeof Tone === 'undefined') {
+    document.querySelector('.controls').innerHTML =
+      '<p style="color:#fd79a8;font-size:.85rem">Could not load audio library (Tone.js). Check your connection and reload.</p>';
+  }
+});
+</script>
+</body>
+</html>
