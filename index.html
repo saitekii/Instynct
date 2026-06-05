@@ -1096,7 +1096,7 @@ function renderContour(phrase) {
   const total = phrase.durations.reduce((s, d) => s + d, 0);
   let beat = 0;
   const pts = notes.map((m, i) => {
-    const cx = PAD + ((beat + phrase.durations[i] / 2) / total) * (W - PAD * 2);
+    const cx = PAD + (beat / total) * (W - PAD * 2);   // note-start, matches playhead
     const cy = H - PAD - ((m - lo) / rng) * (H - PAD * 2);
     beat += phrase.durations[i];
     return [cx, cy];
@@ -1458,6 +1458,13 @@ function stopFlow() {
   flowActive = false;
   if (flowTimer)     { clearTimeout(flowTimer);    flowTimer     = null; }
   if (flowProgTimer) { clearInterval(flowProgTimer); flowProgTimer = null; }
+
+  // Kill melody audio: dispose the synth so all WebAudio-scheduled note
+  // events are cancelled immediately rather than finishing the current phrase.
+  if (endTimer) { clearTimeout(endTimer); endTimer = null; }
+  if (synth)  { try { synth.dispose();  } catch(e) {} synth  = null; }
+  if (reverb) { try { reverb.dispose(); } catch(e) {} reverb = null; }
+  activeSoundType = null;
 
   stopTransport();
   stopContourPlayhead();
