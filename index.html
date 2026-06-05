@@ -1102,11 +1102,23 @@ function renderContour(phrase) {
     return [cx, cy];
   });
 
-  const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
-  const area = `M${pts[0][0].toFixed(1)},${H - PAD} `
-    + pts.map(p => `L${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')
-    + ` L${pts[pts.length-1][0].toFixed(1)},${H - PAD} Z`;
+  // Staircase path: horizontal while a note plays, vertical snap at each note change.
+  // The playhead sweeps along the horizontal segment for the exact duration of the note,
+  // so the visual and audio are always in lockstep.
+  const endX = (W - PAD).toFixed(1);
+  let line = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+  for (let i = 1; i < pts.length; i++) {
+    line += ` H${pts[i][0].toFixed(1)} V${pts[i][1].toFixed(1)}`;
+  }
+  line += ` H${endX}`;  // extend last note to phrase end
 
+  let area = `M${PAD},${H - PAD} L${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+  for (let i = 1; i < pts.length; i++) {
+    area += ` H${pts[i][0].toFixed(1)} V${pts[i][1].toFixed(1)}`;
+  }
+  area += ` H${endX} V${H - PAD} Z`;
+
+  // Dots mark the exact moment each note starts (same x as playhead when note fires)
   const dots = pts.map(p =>
     `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="#6c5ce7" opacity="0.85"/>`
   ).join('');
